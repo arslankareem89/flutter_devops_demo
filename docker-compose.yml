@@ -1,0 +1,7 @@
+services:
+  flutter-web:
+    image: flutter-web:v1
+    container_name: flutter-compose
+    ports:
+      - "8080:80"
+    restart: unless-stopped
