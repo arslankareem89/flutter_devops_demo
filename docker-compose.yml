@@ -1,7 +1,10 @@
 services:
   flutter-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: flutter-web:v1
-    container_name: flutter-compose
+    container_name: flutter-container
     ports:
       - "8080:80"
     restart: unless-stopped
