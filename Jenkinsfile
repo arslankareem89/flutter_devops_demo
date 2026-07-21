@@ -1,9 +1,21 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'ghcr.io/cirruslabs/flutter:stable'
+            args '-u root'
+        }
+    }
 
     stages {
+        stage('Flutter Version') {
+            steps {
+                sh 'flutter --version'
+            }
+        }
+
         stage('Build Flutter Web') {
             steps {
+                sh 'flutter pub get'
                 sh 'flutter build web'
             }
         }
@@ -28,7 +40,6 @@ pipeline {
         success {
             echo 'Pipeline completed successfully!'
         }
-
         failure {
             echo 'Pipeline failed!'
         }
