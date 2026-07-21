@@ -3,18 +3,20 @@ pipeline {
 
     environment {
         FLUTTER_HOME = "/opt/flutter"
-        PATH = "${env.FLUTTER_HOME}/bin:${env.PATH}"
+        PATH = "${FLUTTER_HOME}/bin:${env.PATH}"
+
         IMAGE_NAME = "flutter-web"
         IMAGE_TAG = "v1"
-        CONTAINER_NAME = "flutter-container"
+
+        COMPOSE_PROJECT_NAME = "flutter-devops-demo"
     }
 
     stages {
+
         stage('Flutter Version') {
             steps {
                 sh '''
                 git config --global --add safe.directory /opt/flutter || true
-                git config --global --add safe.directory '*' || true
                 flutter --version
                 '''
             }
@@ -22,58 +24,72 @@ pipeline {
 
         stage('Get Packages') {
             steps {
-                sh 'flutter pub get'
+                sh '''
+                flutter pub get
+                '''
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    export PATH=$PATH:/opt/sonar-scanner/bin
-                    sonar-scanner \
-                      -Dsonar.projectKey=flutter-devops-demo \
-                      -Dsonar.projectName=flutter-devops-demo \
-                      -Dsonar.sources=lib \
-                      -Dsonar.exclusions=**/*.g.dart,**/*.freezed.dart
-                    '''
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                        sonar-scanner \
+                          -Dsonar.projectKey=flutter-devops-demo \
+                          -Dsonar.projectName=flutter-devops-demo \
+                          -Dsonar.sources=lib \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.token=$SONAR_TOKEN
+                        '''
+                    }
                 }
             }
         }
 
         stage('Build Flutter Web') {
             steps {
-                sh 'flutter build web --release'
+                sh '''
+                flutter build web --release
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG}.'
+                sh '''
+                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                '''
             }
         }
 
-        stage('Run with Docker Compose') {
+        stage('Deploy with Docker Compose') {
             steps {
                 sh '''
-                docker rm -f ${CONTAINER_NAME} || true
                 docker compose down || true
                 docker compose up -d --build
-                docker ps | grep ${CONTAINER_NAME}
+                docker ps
                 '''
             }
         }
     }
 
     post {
-        always {
-            echo '🎉 Pipeline completed!'
-        }
         success {
-            echo '✅ Build and deployment successful! App running on port 8080'
+            echo '================================='
+            echo 'Build Successful!'
+            echo 'Flutter App: http://localhost:8080'
+            echo 'SonarQube : http://localhost:9000'
+            echo 'Jenkins   : http://localhost:8081'
+            echo '================================='
         }
+
         failure {
-            echo '❌ Pipeline failed'
+            echo 'Pipeline Failed!'
+        }
+
+        always {
+            echo 'Pipeline Finished'
         }
     }
 }
