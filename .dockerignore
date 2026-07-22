@@ -1,0 +1,15 @@
+.dart_tool
+build
+.idea
+.android
+.ios
+.vscode
+
+android/local.properties
+
+.git
+.gitignore
+
+*.iml
+
+coverage
